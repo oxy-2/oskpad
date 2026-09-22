@@ -49,9 +49,19 @@ the first load (service worker).
 | 2 finger pinch | zoom (scroll wheel) |
 | 3 finger drag | orbit view (middle-drag) |
 
-Board LED: solid = BLE connected, blinking = advertising.
+Board LED: solid = BLE connected, blink = advertising.
 Board button (P0_09) or replug = restart firmware + re-advertise.
 If it ever refuses to pair: Windows Bluetooth > remove OSK Pad > press the button > re-pair.
+
+## Diag mode (USB troubleshooting)
+
+Hold the board button while plugging in USB:
+- BLE stays off, LED off, heartbeat `OSKDIAG alive t=...` every 2s on the data serial port.
+- If the serial port STAYS up in diag mode but vanishes in normal mode, the BLE radio's
+  power spike is browning out the port (weak cable/hub/host port) - use a shorter/better
+  cable or a different port.
+- Watch chrome://device-log on ChromeOS while plugging in: repeated add/remove of
+  239A:80B4 = the board is reset-looping (power), single add + policy remove = host issue.
 
 ## Serial protocol (USB CDC data port)
 

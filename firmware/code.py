@@ -14,21 +14,6 @@ from adafruit_hid.keycode import Keycode
 
 DEVICE_NAME = "OSK Pad"
 
-ble = adafruit_ble.BLERadio()
-try:
-    ble.name = DEVICE_NAME
-except Exception as e:
-    print("name set err:", repr(e))
-hid = HIDService()
-adv = ProvideServicesAdvertisement(hid)
-adv.complete_name = DEVICE_NAME
-mouse = Mouse(hid.devices)
-kbd = Keyboard(hid.devices)
-
-BTN_L = getattr(Mouse, "LEFT_BUTTON", 1)
-BTN_R = getattr(Mouse, "RIGHT_BUTTON", 2)
-BTN_M = getattr(Mouse, "MIDDLE_BUTTON", 4)
-
 BUTTON_PIN_NAME = None
 button = None
 for name in ("D9", "P0_09", "D1", "P0_06"):
@@ -54,6 +39,28 @@ for name in ("LED", "D13", "BLUE_LED"):
         led.direction = digitalio.Direction.OUTPUT
     except Exception:
         led = None
+
+DIAG = button is not None and not button.value
+
+ble = adafruit_ble.BLERadio()
+try:
+    ble.name = DEVICE_NAME
+except Exception as e:
+    print("name set err:", repr(e))
+try:
+    ble.tx_power = 0
+    print("tx_power:", ble.tx_power)
+except Exception as e:
+    print("tx_power err:", repr(e))
+hid = HIDService()
+adv = ProvideServicesAdvertisement(hid)
+adv.complete_name = DEVICE_NAME
+mouse = Mouse(hid.devices)
+kbd = Keyboard(hid.devices)
+
+BTN_L = getattr(Mouse, "LEFT_BUTTON", 1)
+BTN_R = getattr(Mouse, "RIGHT_BUTTON", 2)
+BTN_M = getattr(Mouse, "MIDDLE_BUTTON", 4)
 
 serial = usb_cdc.data
 
@@ -163,48 +170,64 @@ def pump():
 advertising = False
 adv_started = 0.0
 pump_err_t = 0.0
-led_t = 0
+led_t = 0.0
+hb_t = 0.0
 print("OSK PAD READY name:", DEVICE_NAME)
-print("button pin:", BUTTON_PIN_NAME or "none", "led:", led is not None)
+print("button pin:", BUTTON_PIN_NAME or "none", "led:", led is not None, "diag:", DIAG)
 
 while True:
     try:
-        conn = ble.connected
-        if conn and advertising:
-            ble.stop_advertising()
-            advertising = False
-            print("host connected")
-            status_send(True)
-        if not conn and not advertising:
-            try:
-                ble.start_advertising(adv)
-                advertising = True
-                adv_started = time.monotonic()
-                print("advertising")
-                status_send(False)
-            except Exception as e:
-                print("adv err:", repr(e))
-                time.sleep(1)
-        elif advertising and not conn and time.monotonic() - adv_started > 20:
-            try:
+        if DIAG:
+            now = time.monotonic()
+            if now - hb_t > 2.0:
+                hb_t = now
+                try:
+                    serial.write(("OSKDIAG alive t=%d\n" % int(now)).encode())
+                except Exception:
+                    pass
+                print("OSKDIAG alive t=%d" % int(now))
+            pump()
+            if led is not None:
+                led.value = False
+        else:
+            conn = ble.connected
+            if conn and advertising:
                 ble.stop_advertising()
-            except Exception:
-                pass
-            advertising = False
-            print("adv watchdog: restarting advertising")
-        pump()
-        if button is not None and not button.value:
-            time.sleep(0.05)
-            if not button.value:
-                print("button -> reload")
-                status_send(False)
-                supervisor.reload()
-        if led is not None:
-            if conn:
-                led.value = True
-            elif time.monotonic() - led_t > 0.25:
-                led_t = time.monotonic()
-                led.value = not led.value
+                advertising = False
+                print("host connected")
+                status_send(True)
+            if not conn and not advertising:
+                try:
+                    ble.start_advertising(adv)
+                    advertising = True
+                    adv_started = time.monotonic()
+                    print("advertising")
+                    status_send(False)
+                except Exception as e:
+                    print("adv err:", repr(e))
+                    time.sleep(1)
+            elif advertising and not conn and time.monotonic() - adv_started > 20:
+                try:
+                    ble.stop_advertising()
+                except Exception:
+                    pass
+                advertising = False
+                print("adv watchdog: restarting advertising")
+            pump()
+            if button is not None and not button.value:
+                time.sleep(0.05)
+                if not button.value:
+                    print("button -> reload")
+                    status_send(False)
+                    supervisor.reload()
+            if led is not None:
+                if conn:
+                    led.value = True
+                else:
+                    now = time.monotonic()
+                    if now - led_t > 1.0:
+                        led_t = now
+                    led.value = (now - led_t) < 0.05
     except Exception as e:
         print("loop err:", repr(e))
         time.sleep(0.1)
