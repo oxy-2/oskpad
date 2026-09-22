@@ -28,7 +28,9 @@ Windows PC (Onshape)
 
 ## Web app
 
-Hosted at: https://oxy-2.github.io/oskpad/
+Deploy (pick one):
+- **Vercel**: New Project > Import Git Repository > pick this repo > Deploy. Zero config - it's a static site, no build step.
+- **GitHub Pages**: already live at https://oxy-2.github.io/oskpad/
 
 On the Chromebook: open the URL, Connect Pad, pick the serial entry, then install as
 an app (menu > Install as app / Add to shelf) and go fullscreen. Works offline after
