@@ -1,3 +1,4 @@
+import storage
 import usb_cdc
 import usb_hid
 
@@ -13,4 +14,5 @@ except ImportError:
     pass
 
 usb_hid.disable()
+storage.disable_usb_drive()
 usb_cdc.enable(console=True, data=True)
