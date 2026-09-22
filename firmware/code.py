@@ -135,12 +135,15 @@ def handle(cmd, payload):
         status_send(ble.connected)
 
 def pump():
-    global buf
+    global buf, pump_err_t
     try:
         waiting = serial.in_waiting
         if waiting:
             buf.extend(serial.read(waiting))
-    except Exception:
+    except Exception as e:
+        if time.monotonic() - pump_err_t > 2:
+            pump_err_t = time.monotonic()
+            print("pump err:", repr(e))
         return
     while buf:
         cmd = buf[0]
@@ -158,6 +161,8 @@ def pump():
             print("handle err:", repr(e))
 
 advertising = False
+adv_started = 0.0
+pump_err_t = 0.0
 led_t = 0
 print("OSK PAD READY name:", DEVICE_NAME)
 print("button pin:", BUTTON_PIN_NAME or "none", "led:", led is not None)
@@ -174,11 +179,19 @@ while True:
             try:
                 ble.start_advertising(adv)
                 advertising = True
+                adv_started = time.monotonic()
                 print("advertising")
                 status_send(False)
             except Exception as e:
                 print("adv err:", repr(e))
                 time.sleep(1)
+        elif advertising and not conn and time.monotonic() - adv_started > 20:
+            try:
+                ble.stop_advertising()
+            except Exception:
+                pass
+            advertising = False
+            print("adv watchdog: restarting advertising")
         pump()
         if button is not None and not button.value:
             time.sleep(0.05)
