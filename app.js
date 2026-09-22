@@ -18,6 +18,7 @@ const els = {
   btnClose: document.getElementById('btnCloseHelp'),
   btnTheme: document.getElementById('btnTheme'),
   btnFull: document.getElementById('btnFull'),
+  blewarn: document.getElementById('blewarn'),
   fx: document.getElementById('fx')
 };
 
@@ -64,6 +65,7 @@ class PadLink {
     els.dotUsb.classList.remove('on');
     els.dotBle.classList.remove('on');
     els.txtBle.textContent = 'BLE';
+    els.blewarn.hidden = true;
     if (msg) els.note.textContent = msg;
   }
   async readLoop() {
@@ -94,6 +96,7 @@ class PadLink {
         els.dotBle.classList.toggle('on', this.bleOn);
         els.txtBle.textContent = this.bleOn ? 'BLE linked' : 'BLE idle';
         els.pkts.textContent = this.pkts + ' pkts';
+        els.blewarn.hidden = this.bleOn;
         i += 3;
       } else {
         i++;
