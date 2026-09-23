@@ -1,4 +1,4 @@
-const CACHE = 'oskpad-v1';
+const CACHE = 'oskpad-v2';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

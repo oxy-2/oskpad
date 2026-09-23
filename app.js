@@ -109,9 +109,11 @@ class PadLink {
   }
   raw(cmd, payload) {
     if (!this.writer) return;
-    const buf = new Uint8Array(1 + (payload ? payload.length : 0));
-    buf[0] = cmd;
-    if (payload) buf.set(payload, 1);
+    const seq = (this._seq = ((this._seq || 0) + 1) & 0xFF);
+    const buf = new Uint8Array(2 + (payload ? payload.length : 0));
+    buf[0] = seq;
+    buf[1] = cmd;
+    if (payload) buf.set(payload, 2);
     this.writer.write(buf).catch(() => {});
   }
   move(dx, dy) {
@@ -201,10 +203,12 @@ function onTouchStart(e) {
 
 function onTouchMove(e) {
   e.preventDefault();
+  const deltas = new Map();
   for (const t of e.changedTouches) {
     const rec = touches.get(t.identifier);
     if (!rec) continue;
     if (Math.hypot(t.clientX - rec.sx, t.clientY - rec.sy) > 14) gestureMoved = true;
+    deltas.set(t.identifier, { dx: t.clientX - rec.x, dy: t.clientY - rec.y });
     rec.x = t.clientX;
     rec.y = t.clientY;
   }
@@ -223,10 +227,8 @@ function onTouchMove(e) {
       locked = true;
       holdLeft(true);
     }
-    for (const t of e.changedTouches) {
-      const rec = touches.get(t.identifier);
-      if (!rec) continue;
-      link.move((t.clientX - rec.x) * settings.gain, (t.clientY - rec.y) * settings.gain);
+    for (const d of deltas.values()) {
+      link.move(d.dx * settings.gain, d.dy * settings.gain);
     }
   } else if (mode === 'two' && n === 2) {
     const c = centroid();
